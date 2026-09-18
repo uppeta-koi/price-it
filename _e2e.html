@@ -193,12 +193,25 @@ async function run(){
   ok(D(HOST).getElementById('lobbyRoster').querySelectorAll('.chip.in').length===0,'★ 名單已清空（勾勾全消失）',
      D(HOST).getElementById('lobbyRoster').querySelectorAll('.chip.in').length+'');
   ok(D(HOST).getElementById('lobbyRoster').querySelectorAll('.chip').length===10,'10 個名字仍然列出');
-  ok(!vis(P.koi,'viewName'),'★ 清空名單不會害手機要重選名字（身分保留）');
-  // 手機重新整理 -> 自動重新報到
-  await new Promise(function(res){ P.koi.onload=function(){setTimeout(res,300);}; P.koi.contentWindow.location.reload(); });
+  ok(vis(P.koi,'viewName'),'★ 清空名單後手機回到選名字畫面（等於重新點名）');
+  // 幽靈加入回歸測試：舊分頁重新載入，不可以自己跑回名單
+  await new Promise(function(res){ P.tina.onload=function(){setTimeout(res,320);}; P.tina.contentWindow.location.reload(); });
+  await sleep(360);
+  ok(D(HOST).getElementById('lobbyRoster').querySelectorAll('.chip.in').length===0,
+     '★★ 清空名單後，舊分頁重新載入不會幽靈加入',
+     D(HOST).getElementById('lobbyRoster').querySelectorAll('.chip.in').length+' joined');
+  ok(vis(P.tina,'viewName'),'舊分頁也回到選名字畫面');
+  // 重新點名：選了名字才會出現在名單上
+  ok(await pickName(P.tina,'tina'),'重新選擇 Tina');
   await sleep(320);
   ok(D(HOST).getElementById('lobbyRoster').querySelectorAll('.chip.in').length===1,
-     '★ 手機重新整理後自動回到名單（不用重選）',
+     '★ 重新點名後正確顯示 1 人',
+     D(HOST).getElementById('lobbyRoster').querySelectorAll('.chip.in').length+'');
+  // 一般重新整理（沒有清空名單）身分要保留
+  await new Promise(function(res){ P.tina.onload=function(){setTimeout(res,320);}; P.tina.contentWindow.location.reload(); });
+  await sleep(340);
+  ok(!vis(P.tina,'viewName'),'★ 一般重新整理不用重選名字');
+  ok(D(HOST).getElementById('lobbyRoster').querySelectorAll('.chip.in').length===1,'一般重新整理後仍在名單上',
      D(HOST).getElementById('lobbyRoster').querySelectorAll('.chip.in').length+'');
 
   log('');

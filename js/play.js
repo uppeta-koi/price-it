@@ -15,13 +15,26 @@
 
   if (DB.isMock) $('mockBanner').hidden = false;
 
+  /* epoch 綁在各自的身分底下，不同身分互不影響 */
+  function epochKey(id) { return 'priceit.epoch.' + (id || '_'); }
+  function myEpoch() { try { return Number(localStorage.getItem(epochKey(me)) || 0); } catch (e) { return 0; } }
+  function saveEpoch(v) { try { if (me) localStorage.setItem(epochKey(me), String(v || 0)); } catch (e) {} }
+  function forgetMe() {
+    try { localStorage.removeItem(ME_KEY); } catch (e) {}
+    me = null; editing = false; announced = false;
+  }
+
   try { me = localStorage.getItem(ME_KEY); } catch (e) { me = null; }
   if (me && !playerById(me)) me = null;
 
-  /* 這支手機已經有身分 -> 每次載入時重新向主持人報到。
-     這樣主持人按「重置並清空名單」重新點名後，只要手機重新整理就會自動回到名單上，
-     而且不需要重選名字。 */
-  if (me) DB.set('players/' + me, { name: nameOf(me), ts: Date.now() });
+  var announced = false;
+  /* 這支手機已經有身分 -> 向主持人報到一次（重新整理也不用重選名字）。
+     但只有在「名單沒有被清空過」的情況下才報到，否則會變成幽靈加入。 */
+  function announce() {
+    if (!me || announced) return;
+    announced = true;
+    DB.set('players/' + me, { name: nameOf(me), ts: Date.now() });
+  }
 
   /* ---------------- 名字選擇 ---------------- */
   function renderNameGrid(playersInRoom) {
@@ -40,7 +53,9 @@
 
   function pick(id) {
     me = id;
+    announced = true;
     try { localStorage.setItem(ME_KEY, id); } catch (e) {}
+    saveEpoch(Number(game.rosterEpoch || 0));
     DB.set('players/' + id, { name: nameOf(id), ts: Date.now() });
     render();
   }
@@ -63,6 +78,12 @@
     if (!game.round) game.round = 1;
     if (!game.state) game.state = 'waiting';
     if (lastRound !== game.round) { lastRound = game.round; editing = false; $('priceInput').value = ''; }
+
+    /* 主持人按過「重置並清空名單」-> 這支手機的舊身分作廢，回到選名字畫面 */
+    var ep = Number(game.rosterEpoch || 0);
+    if (me && ep !== myEpoch()) { forgetMe(); }
+    else { saveEpoch(ep); announce(); }
+
     resubscribe();
     render();
   }, function (err) { console.error('game read failed', err); });
@@ -247,9 +268,7 @@
   });
 
   $('btnSwitch').addEventListener('click', function () {
-    try { localStorage.removeItem(ME_KEY); } catch (e) {}
-    me = null;
-    editing = false;
+    forgetMe();
     render();
   });
 

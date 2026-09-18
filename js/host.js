@@ -31,7 +31,7 @@
   });
 
   /* ---------------- state ---------------- */
-  var game = { round: 1, state: 'waiting', presenter: null, actual: null };
+  var game = { round: 1, state: 'waiting', presenter: null, actual: null, rosterEpoch: 0 };
   var players = {};
   var presented = {};
   var submitted = {};
@@ -331,9 +331,12 @@
       confirmWrap.hidden = true; btnReset.hidden = false;
       var jobs = [DB.remove('guesses'), DB.remove('submitted'), DB.remove('results'), DB.remove('presented')];
       if (wipePlayers) jobs.push(DB.remove('players'));
+      /* 清空名單時換一個 rosterEpoch：手機看到 epoch 變了就會放掉舊身分，
+         舊分頁重新載入也不會再自動報到（避免幽靈加入）。 */
+      var epoch = wipePlayers ? Date.now() : (game.rosterEpoch || 0);
       Promise.all(jobs)
         .then(function () {
-          return DB.set('game', { round: 1, state: 'waiting', presenter: null, actual: null });
+          return DB.set('game', { round: 1, state: 'waiting', presenter: null, actual: null, rosterEpoch: epoch });
         })
         .catch(function (err) { console.error('reset failed', err); });
     }
