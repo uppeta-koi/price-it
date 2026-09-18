@@ -71,6 +71,9 @@
     DB.on('results', function (v) { results = v || {}; render(); });
 
     bindControls();
+
+    /* 先畫一次預設畫面：Firebase 還沒回應時，投影幕也不會是一片空白 */
+    render();
   }
 
   function resubscribe() {

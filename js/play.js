@@ -62,6 +62,10 @@
     render();
   }, function (err) { console.error('game read failed', err); });
 
+  /* 先用本機名單立刻畫出 8 個名字：網路慢或 Firebase 還沒回應時也選得到，
+     資料回來後再補上「ALREADY JOINED」標記。 */
+  renderNameGrid({});
+
   DB.on('players', function (v) { renderNameGrid(v || {}); render(); });
   DB.on('results', function (v) { results = v || {}; render(); });
 
