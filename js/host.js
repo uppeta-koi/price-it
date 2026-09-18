@@ -132,6 +132,7 @@
               '<span>' + p.name + '</span>' +
               '<span class="tick">' + (inRoom ? '✓' : '') + '</span></div>';
     });
+    html += '<div class="roster-note eyebrow">✓ = 已選過名字（關掉網頁 / 手機鎖屏都會保留）</div>';
     $('lobbyRoster').innerHTML = html;
   }
 
@@ -316,8 +317,9 @@
     confirmWrap.className = 'ctrl-group';
     confirmWrap.hidden = true;
     confirmWrap.innerHTML =
-      '<span class="eyebrow" style="color:#F2B8A0">確定要重置整場遊戲？</span>' +
-      '<button class="btn ghost" id="resetYes">確定重置</button>' +
+      '<span class="eyebrow" style="color:#F2B8A0">重置整場遊戲？</span>' +
+      '<button class="btn ghost" id="resetYes">重置（保留名單）</button>' +
+      '<button class="btn ghost" id="resetWipe">重置並清空名單</button>' +
       '<button class="btn ghost" id="resetNo">取消</button>';
     btnReset.parentNode.appendChild(confirmWrap);
 
@@ -325,14 +327,18 @@
     confirmWrap.querySelector('#resetNo').addEventListener('click', function () {
       confirmWrap.hidden = true; btnReset.hidden = false;
     });
-    confirmWrap.querySelector('#resetYes').addEventListener('click', function () {
+    function doReset(wipePlayers) {
       confirmWrap.hidden = true; btnReset.hidden = false;
-      Promise.all([DB.remove('guesses'), DB.remove('submitted'), DB.remove('results'), DB.remove('presented')])
+      var jobs = [DB.remove('guesses'), DB.remove('submitted'), DB.remove('results'), DB.remove('presented')];
+      if (wipePlayers) jobs.push(DB.remove('players'));
+      Promise.all(jobs)
         .then(function () {
           return DB.set('game', { round: 1, state: 'waiting', presenter: null, actual: null });
         })
         .catch(function (err) { console.error('reset failed', err); });
-    });
+    }
+    confirmWrap.querySelector('#resetYes').addEventListener('click', function () { doReset(false); });
+    confirmWrap.querySelector('#resetWipe').addEventListener('click', function () { doReset(true); });
   }
 
   function alertLine(msg) {

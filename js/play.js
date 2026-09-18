@@ -18,6 +18,11 @@
   try { me = localStorage.getItem(ME_KEY); } catch (e) { me = null; }
   if (me && !playerById(me)) me = null;
 
+  /* 這支手機已經有身分 -> 每次載入時重新向主持人報到。
+     這樣主持人按「重置並清空名單」重新點名後，只要手機重新整理就會自動回到名單上，
+     而且不需要重選名字。 */
+  if (me) DB.set('players/' + me, { name: nameOf(me), ts: Date.now() });
+
   /* ---------------- 名字選擇 ---------------- */
   function renderNameGrid(playersInRoom) {
     var html = '';

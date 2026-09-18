@@ -185,6 +185,22 @@ async function run(){
   click(HOST,'btnStart'); await sleep(260);
   ok(D(HOST).querySelectorAll('.pickbtn.used').length===0,'★ RESET 後「已分享」紀錄也清空');
 
+  // 重置並清空名單
+  click(HOST,'btnReset'); await sleep(90);
+  ok(D(HOST).getElementById('resetWipe')!==null,'★ 有「重置並清空名單」選項');
+  D(HOST).getElementById('resetWipe').click(); await sleep(420);
+  ok(vis(HOST,'viewLobby'),'清空名單後回到 lobby');
+  ok(D(HOST).getElementById('lobbyRoster').querySelectorAll('.chip.in').length===0,'★ 名單已清空（勾勾全消失）',
+     D(HOST).getElementById('lobbyRoster').querySelectorAll('.chip.in').length+'');
+  ok(D(HOST).getElementById('lobbyRoster').querySelectorAll('.chip').length===10,'10 個名字仍然列出');
+  ok(!vis(P.koi,'viewName'),'★ 清空名單不會害手機要重選名字（身分保留）');
+  // 手機重新整理 -> 自動重新報到
+  await new Promise(function(res){ P.koi.onload=function(){setTimeout(res,300);}; P.koi.contentWindow.location.reload(); });
+  await sleep(320);
+  ok(D(HOST).getElementById('lobbyRoster').querySelectorAll('.chip.in').length===1,
+     '★ 手機重新整理後自動回到名單（不用重選）',
+     D(HOST).getElementById('lobbyRoster').querySelectorAll('.chip.in').length+'');
+
   log('');
   log(FAIL===0?'ALL PASS ('+(L.length-1)+' checks)':'FAILURES: '+FAIL);
   document.title='E2E '+(FAIL===0?'ALLPASS':('FAIL'+FAIL));
