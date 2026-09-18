@@ -1,6 +1,10 @@
 /* game.js — 共用常數與小工具（host 與 participant 都會載入） */
 
+/* 參加者名單。順序 = 手機上名字按鈕的排列順序，也是主持人挑選分享者時的預設順序。
+   要加人或改名，改這裡就好（id 只能用英文小寫，且不能重複）。 */
 var PLAYERS = [
+  { id: 'luis',    name: 'Luis' },
+  { id: 'hc',      name: 'HC' },
   { id: 'koi',     name: 'Koi' },
   { id: 'xiaomi',  name: '小米' },
   { id: 'chile',   name: 'Chile' },
@@ -11,20 +15,30 @@ var PLAYERS = [
   { id: 'bonnie',  name: 'Bonnie' }
 ];
 
-/* 8 個 Round 的分享者順序（依序對應 Round 01 ~ 08） */
-var ROUND_ORDER = ['koi', 'xiaomi', 'chile', 'ruth', 'tina', 'haley', 'william', 'bonnie'];
-var TOTAL_ROUNDS = ROUND_ORDER.length;
+/* 總共幾輪。預設 = 每個人都分享一次。
+   如果有人不分享禮物，不用改這裡：主持人隨時可以按 FINISH GAME 提早結束。 */
+var TOTAL_ROUNDS = PLAYERS.length;
 
 function playerById(id) {
   for (var i = 0; i < PLAYERS.length; i++) if (PLAYERS[i].id === id) return PLAYERS[i];
   return null;
 }
-function nameOf(id) { var p = playerById(id); return p ? p.name : id; }
-function presenterOf(round) { return ROUND_ORDER[(round - 1) % TOTAL_ROUNDS]; }
-function guessersOf(round) {
-  var pres = presenterOf(round);
-  return PLAYERS.filter(function (p) { return p.id !== pres; });
+function nameOf(id) { var p = playerById(id); return p ? p.name : (id || '—'); }
+
+/* 這一輪出價的人 = 除了分享者以外的所有人 */
+function guessersOf(presenterId) {
+  return PLAYERS.filter(function (p) { return p.id !== presenterId; });
 }
+
+/* 主持人挑選分享者時的預設建議：名單順序中第一個還沒分享過的人 */
+function suggestPresenter(presented) {
+  presented = presented || {};
+  for (var i = 0; i < PLAYERS.length; i++) {
+    if (!presented[PLAYERS[i].id]) return PLAYERS[i].id;
+  }
+  return PLAYERS[0].id;
+}
+
 function pad2(n) { return (n < 10 ? '0' : '') + n; }
 function money(n) { return Number(n).toLocaleString('en-US'); }
 
@@ -42,9 +56,16 @@ function computeWinners(guesses, actual) {
   return { winners: winners, diff: (best === Infinity ? null : best) };
 }
 
-/* 4 + 3 置中的分列規則（少於等於 4 人時只排一列） */
+/* 價格卡的分列方式：盡量兩排、上排不少於下排，且一排最多 5 張 */
 function splitRows(n) {
-  if (n <= 4) return [n, 0];
-  var top = Math.min(4, Math.ceil(n / 2));
+  if (n <= 5) return [n, 0];
+  var top = Math.ceil(n / 2);
+  if (top > 5) top = 5;
   return [top, n - top];
+}
+
+/* 一排最多幾張卡（用來決定卡片寬度與字級） */
+function maxCols(n) {
+  var r = splitRows(n);
+  return Math.max(r[0], r[1]) || 1;
 }

@@ -1,52 +1,42 @@
 <!doctype html>
 <html><head><meta charset="utf-8"><title>shot</title>
-<style>html,body{margin:0;padding:0;overflow:hidden;background:#000}
-iframe{border:0;display:block}</style></head>
-<body>
+<style>html,body{margin:0;padding:0;overflow:hidden;background:#000}iframe{border:0;display:block}</style>
+</head><body>
 <script>
 var q=new URLSearchParams(location.search), v=q.get('v')||'host-lobby';
 var ROOM='rooms/teambuilding', KEY='priceit.mockdb.'+ROOM;
+var NAMES={luis:'Luis',hc:'HC',koi:'Koi',xiaomi:'小米',chile:'Chile',ruth:'Ruth',
+           tina:'Tina',haley:'Haley',william:'William',bonnie:'Bonnie'};
+var players={}; Object.keys(NAMES).forEach(function(id){players[id]={name:NAMES[id],ts:1};});
 
-var players={};['koi','xiaomi','chile','ruth','tina','haley','william','bonnie']
-  .forEach(function(id){players[id]={name:{koi:'Koi',xiaomi:'小米',chile:'Chile',ruth:'Ruth',tina:'Tina',haley:'Haley',william:'William',bonnie:'Bonnie'}[id],ts:1}});
-
-var g3={koi:{name:'Koi',price:2680},xiaomi:{name:'小米',price:3500},ruth:{name:'Ruth',price:1980},
-        tina:{name:'Tina',price:4200},haley:{name:'Haley',price:2500},william:{name:'William',price:5000},
-        bonnie:{name:'Bonnie',price:3200}};
-var sub3={};for(var k in g3)sub3[k]=true;
-var sub3partial={koi:true,xiaomi:true,ruth:true,tina:true,william:true};
+var PR={luis:2680,hc:3500,koi:1980,xiaomi:4200,chile:2500,ruth:5000,haley:3200,william:2900,bonnie:3100};
+var g={}; Object.keys(PR).forEach(function(id){g[id]={name:NAMES[id],price:PR[id]};});
+var sub={}; Object.keys(PR).forEach(function(id){sub[id]=true;});
+var subPartial={luis:true,hc:true,koi:true,xiaomi:true,ruth:true,william:true};
 
 function store(o){localStorage.setItem(KEY,JSON.stringify(o));}
 function base(state,extra){
-  // mock DB 的 root 在 localStorage key 裡，所以內容是「房間內容」本身
-  var room={game:{round:3,state:state,actual:null},players:players,
-            submitted:{},guesses:{},results:{}};
-  if(extra)extra(room);
-  store(room);
+  var room={game:{round:3,state:state,presenter:'tina',actual:null},players:players,
+            presented:{tina:3},submitted:{},guesses:{},results:{}};
+  if(extra)extra(room); store(room);
 }
 var W=1600,H=900,SRC='host.html';
 
-if(v==='host-lobby'){ base('waiting',function(r){r.game.round=1;}); }
-if(v==='host-collect'){ base('collecting',function(r){r.submitted={r3:sub3partial};}); }
-if(v==='host-reveal'){ base('revealed',function(r){r.submitted={r3:sub3};r.guesses={r3:g3};}); }
-if(v==='host-actual'){ base('actual_revealed',function(r){r.game.actual=2880;r.submitted={r3:sub3};
-  r.guesses={r3:g3};r.results={r3:{actual:2880,winners:['koi'],diff:200}};}); }
-if(v==='host-finish'){ base('finished',function(r){r.game.round=8;
-  r.results={r1:{actual:1,winners:['koi'],diff:0},r2:{actual:1,winners:['koi'],diff:0},
-             r3:{actual:1,winners:['tina'],diff:0},r4:{actual:1,winners:['koi'],diff:0}};}); }
+if(v==='host-lobby'){ base('waiting',function(r){r.game.round=1;r.game.presenter=null;r.presented={};}); }
+if(v==='host-picking'){ base('picking',function(r){r.game.presenter=null;r.presented={koi:1,bonnie:2};}); }
+if(v==='host-collect'){ base('collecting',function(r){r.submitted={r3:subPartial};}); }
+if(v==='host-reveal'){ base('revealed',function(r){r.submitted={r3:sub};r.guesses={r3:g};}); }
+if(v==='host-actual'){ base('actual_revealed',function(r){r.game.actual=2880;r.submitted={r3:sub};
+  r.guesses={r3:g};r.results={r3:{actual:2880,winners:['william'],diff:20}};}); }
+if(v==='host-finish'){ base('finished',function(r){r.game.round=10;
+  r.results={r1:{winners:['koi']},r2:{winners:['koi']},r3:{winners:['tina']},r4:{winners:['koi']}};}); }
 
 if(v.indexOf('play-')===0){
   W=390;H=844;SRC='play.html';
-  if(v==='play-guess'){ base('collecting',function(r){r.submitted={r3:sub3partial};}); localStorage.setItem('priceit.me','haley'); }
-  if(v==='play-locked'){ base('collecting',function(r){r.submitted={r3:sub3partial};});
-    localStorage.setItem('priceit.me','koi'); localStorage.setItem('priceit.guess.'+ROOM+'.koi.r3','2680'); }
-  if(v==='play-presenter'){ base('collecting',function(r){r.submitted={r3:sub3partial};}); localStorage.setItem('priceit.me','chile'); }
-  if(v==='play-result'){ base('actual_revealed',function(r){r.game.actual=2880;r.submitted={r3:sub3};
-    r.guesses={r3:g3};r.results={r3:{actual:2880,winners:['koi'],diff:200}};}); localStorage.setItem('priceit.me','tina'); }
+  if(v==='play-guess'){ base('collecting',function(r){r.submitted={r3:subPartial};}); localStorage.setItem('priceit.me','haley'); }
+  if(v==='play-presenter'){ base('collecting',function(r){r.submitted={r3:subPartial};}); localStorage.setItem('priceit.me','tina'); }
   if(v==='play-name'){ base('waiting',function(r){r.game.round=1;}); localStorage.removeItem('priceit.me'); }
 }
-if(v==='landing'){ W=1600;H=900;SRC='index.html'; }
-
 try{ sessionStorage.setItem('priceit.host.ok','1'); }catch(e){}
 var f=document.createElement('iframe');
 f.style.width=W+'px'; f.style.height=H+'px'; f.src=SRC;

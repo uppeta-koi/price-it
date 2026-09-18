@@ -31,8 +31,9 @@
   });
 
   /* ---------------- state ---------------- */
-  var game = { round: 1, state: 'waiting', actual: null };
+  var game = { round: 1, state: 'waiting', presenter: null, actual: null };
   var players = {};
+  var presented = {};
   var submitted = {};
   var guesses = {};
   var results = {};
@@ -44,16 +45,8 @@
 
     if (DB.isMock) $('mockBanner').hidden = false;
 
-    /* join URL + QR */
     var base = location.origin + location.pathname.replace(/[^\/]*$/, '');
-    var joinUrl = base + 'play.html';
-    $('joinUrl').textContent = joinUrl.replace(/^https?:\/\//, '');
-    try {
-      /* 掃描可靠度優先：純黑、4 個模組的靜默區（QR 規格要求）、盡量放大 */
-      QRCode.render($('qrbox'), joinUrl, { size: 440, margin: 4, dark: '#000000' });
-    } catch (e) {
-      $('qrbox').innerHTML = '<div style="color:#20374F;font:12px sans-serif;padding:20px">QR 產生失敗<br>請直接輸入網址</div>';
-    }
+    $('joinUrl').textContent = (base + 'play.html').replace(/^https?:\/\//, '');
 
     DB.onConnection(function (ok) {
       $('connDot').className = 'dot' + (ok ? '' : ' off');
@@ -63,7 +56,7 @@
     });
 
     DB.on('game', function (v) {
-      game = v || { round: 1, state: 'waiting', actual: null };
+      game = v || { round: 1, state: 'waiting', presenter: null, actual: null };
       if (!game.round) game.round = 1;
       if (!game.state) game.state = 'waiting';
       resubscribe();
@@ -71,11 +64,10 @@
     }, function (err) { console.error('game read failed', err); });
 
     DB.on('players', function (v) { players = v || {}; render(); });
+    DB.on('presented', function (v) { presented = v || {}; render(); });
     DB.on('results', function (v) { results = v || {}; render(); });
 
     bindControls();
-
-    /* 先畫一次預設畫面：Firebase 還沒回應時，投影幕也不會是一片空白 */
     render();
   }
 
@@ -98,26 +90,29 @@
 
   function render() {
     var round = game.round, st = game.state;
-    var pres = presenterOf(round);
-    var list = guessersOf(round);
+    var pres = game.presenter || null;
+    var list = guessersOf(pres);
 
     $('roundLabel').textContent = 'ROUND ' + pad2(round) + ' / ' + pad2(TOTAL_ROUNDS);
     $('presenterLabel').innerHTML = 'THIS ROUND &nbsp; <b>' + nameOf(pres) + '</b>';
-    $('presenterLabel').hidden = (st === 'waiting' || st === 'finished');
-    $('roundLabel').hidden = (st === 'finished');
+    $('presenterLabel').hidden = (st === 'waiting' || st === 'picking' || st === 'finished' || !pres);
+    $('roundLabel').hidden = (st === 'finished' || st === 'waiting');
 
     show('viewLobby', st === 'waiting');
+    show('viewPicking', st === 'picking');
     show('viewCollect', st === 'collecting');
     show('viewReveal', st === 'revealed' || st === 'actual_revealed');
     show('viewFinish', st === 'finished');
 
     if (st === 'waiting') renderLobby();
-    if (st === 'collecting') renderCollect(round, list);
+    if (st === 'picking') renderPicking(round);
+    if (st === 'collecting') renderCollect(pres, list);
     if (st === 'revealed' || st === 'actual_revealed') renderReveal(round, list);
     if (st === 'finished') renderFinish();
 
-    /* controls */
     show('btnStart', st === 'waiting');
+    show('btnFinish', st === 'picking');
+    show('btnRepick', st === 'collecting');
     show('btnReveal', st === 'collecting');
     show('actualForm', st === 'revealed');
     show('actualSummary', st === 'actual_revealed');
@@ -140,7 +135,49 @@
     $('lobbyRoster').innerHTML = html;
   }
 
-  function renderCollect(round, list) {
+  function renderPicking(round) {
+    $('pickRound').textContent = pad2(round);
+    var suggest = suggestPresenter(presented);
+    var html = '';
+    PLAYERS.forEach(function (p) {
+      var doneRound = presented[p.id];
+      html += '<button class="pickbtn' + (doneRound ? ' used' : '') +
+              (p.id === suggest ? ' suggest' : '') + '" data-id="' + p.id + '">' +
+              '<span class="pn">' + p.name + '</span>' +
+              '<span class="ps">' + (doneRound ? '已分享 · R' + pad2(doneRound) : '&nbsp;') + '</span>' +
+              '</button>';
+    });
+    $('pickGrid').innerHTML = html;
+    Array.prototype.forEach.call($('pickGrid').querySelectorAll('.pickbtn'), function (b) {
+      b.addEventListener('click', function () { choosePresenter(b.getAttribute('data-id')); });
+    });
+  }
+
+  function choosePresenter(id) {
+    var round = game.round;
+    var old = game.presenter;
+    var upd = {};
+    upd[id] = round;
+    Promise.resolve()
+      .then(function () {
+        /* 同一輪換人時，把舊分享者從「已分享」清掉 */
+        if (old && old !== id && presented[old] === round) return DB.remove('presented/' + old);
+      })
+      .then(function () { return DB.update('presented', upd); })
+      .then(function () {
+        /* 新分享者若已經出過價，要把他的出價收回 */
+        return Promise.all([
+          DB.remove('guesses/r' + round + '/' + id),
+          DB.remove('submitted/r' + round + '/' + id)
+        ]);
+      })
+      .then(function () {
+        return DB.update('game', { presenter: id, state: 'collecting', actual: null });
+      })
+      .catch(function (err) { console.error('choose presenter failed', err); });
+  }
+
+  function renderCollect(pres, list) {
     var done = 0, html = '';
     list.forEach(function (p) {
       var ok = !!submitted[p.id];
@@ -152,11 +189,10 @@
     $('progN').textContent = done;
     $('progD').textContent = '/ ' + list.length;
     $('progBar').style.width = (list.length ? (done / list.length * 100) : 0) + '%';
-    $('collectSub').textContent = '分享者：' + nameOf(presenterOf(round)) + '（本輪不出價）';
+    $('collectSub').textContent = '分享者：' + nameOf(pres) + '（本輪不出價）';
 
     var all = done === list.length && list.length > 0;
     $('progCap').textContent = all ? 'ALL LOCKED IN.' : '已完成鑒價 · WAITING FOR EVERYONE…';
-    $('btnReveal').className = 'btn solid' + (all ? '' : '');
   }
 
   function renderReveal(round, list) {
@@ -167,6 +203,8 @@
     $('revealHead').textContent = (actual === null) ? 'ALL PRICES' : 'ACTUAL NT$' + money(actual);
 
     var rows = splitRows(list.length);
+    $('cardsWrap').style.setProperty('--cols', maxCols(list.length));
+
     var html1 = '', html2 = '', i = 0;
     list.forEach(function (p) {
       var g = guesses[p.id];
@@ -175,7 +213,7 @@
       var diffTxt = '';
       if (actual !== null && has) diffTxt = (win ? 'CLOSEST · ' : '') + 'Δ NT$' + money(Math.abs(g.price - actual));
       var card =
-        '<div class="card' + (win ? ' win' : '') + (has ? '' : ' miss') + '" style="animation-delay:.02s">' +
+        '<div class="card' + (win ? ' win' : '') + (has ? '' : ' miss') + '">' +
           '<div class="nm">' + p.name + '</div>' +
           '<div>' +
             '<div class="pr num">' + (has ? '<small>NT$</small>' + money(g.price) : '—') + '</div>' +
@@ -194,7 +232,7 @@
       var names = winners.map(function (id) { return nameOf(id); }).join(' + ');
       var wp = winners.length && guesses[winners[0]] ? guesses[winners[0]].price : null;
       $('sumClosest').textContent = winners.length ? (names + '  ·  NT$' + money(wp)) : '—';
-      $('sumDiff').textContent = (res.diff === null || res.diff === undefined) ? '—' : 'NT$' + money(res.diff);
+      $('sumDiff').textContent = (res.diff === null || res.diff === undefined || res.diff < 0) ? '—' : 'NT$' + money(res.diff);
     }
   }
 
@@ -223,7 +261,15 @@
   /* ---------------- controls ---------------- */
   function bindControls() {
     $('btnStart').addEventListener('click', function () {
-      DB.update('game', { round: game.round || 1, state: 'collecting', actual: null });
+      DB.update('game', { round: game.round || 1, state: 'picking', presenter: null, actual: null });
+    });
+
+    $('btnRepick').addEventListener('click', function () {
+      DB.update('game', { state: 'picking' });
+    });
+
+    $('btnFinish').addEventListener('click', function () {
+      DB.update('game', { state: 'finished' });
     });
 
     $('btnReveal').addEventListener('click', function () {
@@ -232,8 +278,7 @@
 
     var ai = $('actualInput');
     ai.addEventListener('input', function () {
-      var v = ai.value.replace(/[^0-9]/g, '').replace(/^0+(?=\d)/, '');
-      ai.value = v;
+      ai.value = ai.value.replace(/[^0-9]/g, '').replace(/^0+(?=\d)/, '');
     });
     ai.addEventListener('keydown', function (e) { if (e.key === 'Enter') doActual(); });
     $('btnActual').addEventListener('click', doActual);
@@ -246,7 +291,8 @@
         g = g || {};
         var w = computeWinners(g, v);
         return DB.set('results/r' + round, {
-          actual: v, winners: w.winners, diff: (w.diff === null ? -1 : w.diff)
+          actual: v, presenter: game.presenter || '', winners: w.winners,
+          diff: (w.diff === null ? -1 : w.diff)
         }).then(function () {
           return DB.update('game', { actual: v, state: 'actual_revealed' });
         });
@@ -256,19 +302,15 @@
 
     $('btnNext').addEventListener('click', function () {
       var round = game.round;
-      if (round >= TOTAL_ROUNDS) {
-        DB.update('game', { state: 'finished' });
-        return;
-      }
+      if (round >= TOTAL_ROUNDS) { DB.update('game', { state: 'finished' }); return; }
       var n = round + 1;
       Promise.all([DB.remove('guesses/r' + n), DB.remove('submitted/r' + n)])
         .then(function () {
-          return DB.update('game', { round: n, state: 'collecting', actual: null });
+          return DB.update('game', { round: n, state: 'picking', presenter: null, actual: null });
         })
         .catch(function (err) { console.error('next round failed', err); });
     });
 
-    /* Reset with inline confirmation (no blocking browser dialog) */
     var btnReset = $('btnReset');
     var confirmWrap = document.createElement('span');
     confirmWrap.className = 'ctrl-group';
@@ -279,17 +321,15 @@
       '<button class="btn ghost" id="resetNo">取消</button>';
     btnReset.parentNode.appendChild(confirmWrap);
 
-    btnReset.addEventListener('click', function () {
-      confirmWrap.hidden = false; btnReset.hidden = true;
-    });
+    btnReset.addEventListener('click', function () { confirmWrap.hidden = false; btnReset.hidden = true; });
     confirmWrap.querySelector('#resetNo').addEventListener('click', function () {
       confirmWrap.hidden = true; btnReset.hidden = false;
     });
     confirmWrap.querySelector('#resetYes').addEventListener('click', function () {
       confirmWrap.hidden = true; btnReset.hidden = false;
-      Promise.all([DB.remove('guesses'), DB.remove('submitted'), DB.remove('results')])
+      Promise.all([DB.remove('guesses'), DB.remove('submitted'), DB.remove('results'), DB.remove('presented')])
         .then(function () {
-          return DB.set('game', { round: 1, state: 'waiting', actual: null });
+          return DB.set('game', { round: 1, state: 'waiting', presenter: null, actual: null });
         })
         .catch(function (err) { console.error('reset failed', err); });
     });
@@ -306,7 +346,6 @@
   try { alreadyIn = sessionStorage.getItem(GATE_KEY) === '1'; } catch (e) {}
   if (alreadyIn) { openHost(); } else { setTimeout(function () { $('pinInput').focus(); }, 60); }
 
-  /* keyboard shortcuts for the host: space = primary action */
   document.addEventListener('keydown', function (e) {
     if ($('stage').hidden) return;
     if (e.target && /INPUT|TEXTAREA/.test(e.target.tagName)) return;

@@ -16,9 +16,9 @@ price-it/
 │   └── style.css           全站樣式（uppeta 深藍品牌語言）
 ├── js/
 │   ├── firebase-config.js  ★ 唯一需要你修改的檔案
-│   ├── game.js             8 個人、8 個 Round、勝負計算
+│   ├── game.js             參加者名單、輪數、勝負計算
 │   ├── db.js               資料庫連線層
-│   ├── qrcode.js           QR Code 產生器（自帶，不依賴外部服務）
+│   ├── qrcode.js           （已不使用，保留無妨）
 │   ├── host.js             主持人畫面邏輯
 │   └── play.js             參加者畫面邏輯
 ├── database.rules.json     ★ 要貼到 Firebase 的安全規則
@@ -115,6 +115,7 @@ var ROOM_ID  = "teambuilding";
         "players":   { ".read": true, ".write": true },
         "submitted": { ".read": true, ".write": true },
         "results":   { ".read": true, ".write": true },
+        "presented": { ".read": true, ".write": true },
 
         "guesses": {
           ".write": "!newData.exists()",
@@ -206,7 +207,7 @@ python3 -m http.server 8000
 
 1. 桌機接投影，開 `https://<你的帳號>.github.io/price-it/` → 按 **HOST** → 輸入 PIN **0926**。
 2. 大螢幕出現 **PRICE IT.** 和 QR Code。
-3. 請大家用手機掃 QR Code（或直接輸入畫面上那行網址）。
+3. 請大家用手機瀏覽器打開大螢幕上顯示的那行網址。
 4. 每個人點自己的名字。大螢幕右下角會即時亮起 8 個名字。
    - 名字選過就會記住，**整場不用再選第二次**。
 5. 八個人都亮了 → 按 **START ROUND**。
@@ -215,16 +216,22 @@ python3 -m http.server 8000
 
 | 步驟 | 大螢幕 | 你要做的事 |
 |---|---|---|
-| 1 | ROUND 01 / 08 · THIS ROUND **Koi** | 請 Koi 拿出禮物，分享 1 分鐘（不能講價格） |
-| 2 | `0 / 7` 逐漸增加，右邊列出誰完成了 | 等大家出價；分享者手機上沒有輸入框，不用管他 |
-| 3 | `7 / 7` · **ALL LOCKED IN.** | 喊「3、2、1、開價！」 |
-| 4 | — | 按 **REVEAL** |
-| 5 | 7 張價格卡同時出現 | 請分享者公布實際價格 |
-| 6 | 下方 **ACTUAL PRICE** 輸入框 | 輸入實際價格，按 **REVEAL ACTUAL PRICE** |
-| 7 | 最接近的人變成白色卡片，下方顯示 CLOSEST / DIFFERENCE | 恭喜他 |
-| 8 | — | 按 **NEXT ROUND** |
+| 1 | **這一輪是誰的禮物？** 列出 10 個人 | 點選這一輪要分享的人（順序隨你，不必照名單） |
+| 2 | ROUND 01 / 10 · THIS ROUND **Tina** | 請他拿出禮物，分享 1 分鐘（不能講價格） |
+| 3 | `0 / 9` 逐漸增加，右邊列出誰完成了 | 等大家出價；分享者手機上沒有輸入框 |
+| 4 | `9 / 9` · **ALL LOCKED IN.** | 喊「3、2、1、開價！」 |
+| 5 | — | 按 **REVEAL** |
+| 6 | 9 張價格卡同時出現 | 請分享者公布實際價格 |
+| 7 | 下方 **ACTUAL PRICE** 輸入框 | 輸入實際價格，按 **REVEAL ACTUAL PRICE** |
+| 8 | 最接近的人變成白色卡片 | 恭喜他 |
+| 9 | — | 按 **NEXT ROUND** → 回到步驟 1 選下一位 |
 
-所有手機會**自動**跟著進入下一輪，沒有人需要重新整理或重新加入。
+所有手機會**自動**跟著走，沒有人需要重新整理或重新加入。
+
+**挑選分享者畫面的細節**
+- 已經分享過的人會變淡、標示「已分享 · R01」，避免重複點到。
+- 白框那一個是系統建議（名單中第一個還沒分享的人），但你可以點任何人。
+- 點錯了？在收集出價的畫面按 **換分享者** 就能回去重選，被換掉的人不會被誤記成已分享。
 
 ### 鍵盤快速鍵（主持人）
 
@@ -233,7 +240,8 @@ python3 -m http.server 8000
 
 ### 結束
 
-第 8 輪按 **NEXT ROUND**（此時會顯示 **FINISH GAME**）→
+全部分享完後按 **NEXT ROUND**（最後一輪會顯示 **FINISH GAME**），
+或在挑選畫面隨時按 **FINISH GAME** →
 大螢幕出現 **PRICE IT. FINISHED. / THANKS FOR PLAYING** 以及 **PRICE MASTER**（本場贏最多輪的人）。
 
 ### 重來
@@ -243,19 +251,23 @@ python3 -m http.server 8000
 
 ---
 
-## 九、8 個 Round 的分享者順序
+## 九、參加者名單
 
 ```
-01  Koi        05  Tina
-02  小米        06  Haley
-03  Chile      07  William
-04  Ruth       08  Bonnie
+Luis      Chile     William
+HC        Ruth      Bonnie
+Koi       Tina
+小米       Haley
 ```
 
-當輪分享者自動排除，所以每輪都是 **7 個人出價**。
-想改順序或改名單，開 `js/game.js` 最上面兩個清單改就好（兩邊的 `id` 要一致）。
+共 **10 人**，所以每一輪都是 **9 個人出價**（當輪分享者自動排除）。
 
----
+分享順序**不固定**，由主持人在每一輪現場點選。
+總輪數預設 = 人數 = 10 輪；如果有人不分享禮物，不用改設定，
+在挑選畫面按 **FINISH GAME** 就能提早結束。
+
+想加人或改名，開 `js/game.js` 最上面的 `PLAYERS` 清單修改即可
+（`id` 要用英文小寫且不可重複，順序就是手機上按鈕的順序）。
 
 ## 十、規則細節
 
@@ -263,7 +275,8 @@ python3 -m http.server 8000
 - **Reveal 前可以改自己的答案**：手機上按「修改我的鑒價」。
 - 兩個人差距完全相同 → **兩個人都算本輪 Winner**，兩張卡都會 highlight。
 - 有人沒出價也可以 Reveal（那張卡顯示 `—`，不列入計算）。
-- 主持人不必等 7/7 才 REVEAL，按鈕隨時可按。
+- 主持人可在收集期間按「換分享者」重新指定，被換掉的人會回到出價狀態。
+- 主持人不必等 9/9 才 REVEAL，按鈕隨時可按。
 
 ---
 
@@ -278,7 +291,6 @@ python3 -m http.server 8000
 | 有人手機換了 / 重新整理後身份跑掉 | 手機右下角按「換人」，重新點自己的名字即可，出價不會受影響。 |
 | 想清空重來但不想動 Reset | 把 `js/firebase-config.js` 的 `ROOM_ID` 改成別的字（例如 `teambuilding2`），等於開一個全新房間。 |
 | GitHub Pages 打開是 404 | Pages 剛開通要等 1–2 分鐘；確認 `index.html` 在 repo 根目錄，不是包在一層資料夾裡。 |
-| QR Code 掃不到 | 投影太小的話請大家改用畫面上顯示的網址手動輸入。 |
 
 ---
 
@@ -287,10 +299,12 @@ python3 -m http.server 8000
 ```
 rooms/teambuilding/
 ├── game
-│   ├── round        1 ~ 8
-│   ├── state        waiting | collecting | revealed | actual_revealed | finished
+│   ├── round        1 ~ 10
+│   ├── state        waiting | picking | collecting | revealed | actual_revealed | finished
+│   ├── presenter    本輪分享者（主持人現場點選）
 │   └── actual       本輪實際價格
 ├── players/<id>           { name, ts }              誰加入了
+├── presented/<id>         回合數                     誰已經分享過了
 ├── submitted/r<N>/<id>    true                      誰已完成（不含金額，Reveal 前可公開讀）
 ├── guesses/r<N>/<id>      { name, price, ts }       金額本體（Reveal 前規則禁止讀取）
 └── results/r<N>           { actual, winners[], diff } 每輪結果，用來算 PRICE MASTER

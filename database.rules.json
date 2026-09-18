@@ -6,6 +6,7 @@
         "players":   { ".read": true, ".write": true },
         "submitted": { ".read": true, ".write": true },
         "results":   { ".read": true, ".write": true },
+        "presented": { ".read": true, ".write": true },
 
         "guesses": {
           ".write": "!newData.exists()",

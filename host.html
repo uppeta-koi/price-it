@@ -38,14 +38,18 @@
       <div>
         <div class="eyebrow">Team Building</div>
         <h1 class="display" style="margin-top:14px">PRICE IT.</h1>
-        <div class="sub lede">用手機掃描右方 QR Code，選擇你的名字即可加入。</div>
-        <div class="url" id="joinUrl">—</div>
+        <div class="sub lede">用手機瀏覽器打開下面這個網址，選擇你的名字即可加入。</div>
+        <div class="joinurl-big num" id="joinUrl">—</div>
         <div class="roster" id="lobbyRoster"></div>
       </div>
-      <div>
-        <div class="qrbox" id="qrbox"></div>
-        <div class="qrcap eyebrow">Scan to join</div>
-      </div>
+    </div>
+
+    <!-- ---- PICKING PRESENTER ---- -->
+    <div class="picking" id="viewPicking" hidden>
+      <div class="eyebrow">Round <span id="pickRound">01</span></div>
+      <h2 class="display pick-q" style="margin-top:12px">這一輪是誰的禮物？</h2>
+      <div class="lede" style="margin-top:1.6vh">點選這一輪要分享禮物的人</div>
+      <div class="pickgrid" id="pickGrid"></div>
     </div>
 
     <!-- ---- COLLECTING ---- -->
@@ -70,7 +74,7 @@
     <!-- ---- REVEAL / ACTUAL ---- -->
     <div id="viewReveal" hidden style="width:100%">
       <div class="reveal-head"><div class="t" id="revealHead">ALL PRICES</div></div>
-      <div class="cards">
+      <div class="cards" id="cardsWrap">
         <div class="cardrow" id="row1"></div>
         <div class="cardrow" id="row2"></div>
       </div>
@@ -113,6 +117,8 @@
       </div>
 
       <button class="btn solid" id="btnStart" hidden>Start round</button>
+      <button class="btn ghost" id="btnRepick" hidden>換分享者</button>
+      <button class="btn ghost" id="btnFinish" hidden>Finish game</button>
       <button class="btn solid" id="btnReveal" hidden>Reveal</button>
       <button class="btn solid" id="btnNext" hidden>Next round</button>
       <button class="btn ghost" id="btnReset">Reset game</button>
@@ -125,7 +131,6 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 <script src="js/firebase-config.js"></script>
 <script src="js/game.js"></script>
-<script src="js/qrcode.js"></script>
 <script src="js/db.js"></script>
 <script src="js/host.js"></script>
 </body>

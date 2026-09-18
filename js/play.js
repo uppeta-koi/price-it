@@ -6,7 +6,7 @@
 
   var ME_KEY = 'priceit.me';
   var me = null;                 // player id
-  var game = { round: 1, state: 'waiting', actual: null };
+  var game = { round: 1, state: 'waiting', presenter: null, actual: null };
   var submitted = {};
   var guesses = {};
   var results = {};
@@ -54,7 +54,7 @@
 
   /* ---------------- 訂閱 ---------------- */
   DB.on('game', function (v) {
-    game = v || { round: 1, state: 'waiting', actual: null };
+    game = v || { round: 1, state: 'waiting', presenter: null, actual: null };
     if (!game.round) game.round = 1;
     if (!game.state) game.state = 'waiting';
     if (lastRound !== game.round) { lastRound = game.round; editing = false; $('priceInput').value = ''; }
@@ -87,8 +87,8 @@
 
   function render() {
     var round = game.round, st = game.state;
-    var pres = presenterOf(round);
-    var list = guessersOf(round);
+    var pres = game.presenter || null;
+    var list = guessersOf(pres);
     var iAmPresenter = (me === pres);
     var iSubmitted = !!(me && submitted[me]);
 
@@ -105,6 +105,9 @@
     }
 
     var v = 'standby';
+    $('standbyMsg').textContent = (st === 'picking')
+      ? '主持人正在選這一輪的分享者。'
+      : '等待主持人開始這一輪。';
     if (st === 'finished') v = 'finished';
     else if (st === 'revealed' || st === 'actual_revealed') v = 'revealed';
     else if (st === 'collecting') {

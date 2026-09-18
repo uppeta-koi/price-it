@@ -24,10 +24,10 @@ function txt(f){return (D(f).body.innerText||D(f).body.textContent||'').replace(
 function vis(f,id){var e=D(f).getElementById(id);return !!e && !e.hidden && e.offsetParent!==null;}
 function click(f,id){D(f).getElementById(id).click();}
 
-var NAMES=[['koi','Koi'],['xiaomi','小米'],['chile','Chile'],['ruth','Ruth'],['tina','Tina'],
-           ['haley','Haley'],['william','William'],['bonnie','Bonnie']];
-var P={};   // id -> iframe
-var HOST=null;
+var NAMES=[['luis','Luis'],['hc','HC'],['koi','Koi'],['xiaomi','小米'],['chile','Chile'],
+           ['ruth','Ruth'],['tina','Tina'],['haley','Haley'],['william','William'],['bonnie','Bonnie']];
+var IDS=NAMES.map(function(x){return x[0];});
+var P={}, HOST=null;
 
 async function pickName(f,id){
   var btns=D(f).querySelectorAll('.namebtn');
@@ -39,187 +39,151 @@ async function typePrice(f,price){
   inp.value=String(price);
   inp.dispatchEvent(new f.contentWindow.Event('input',{bubbles:true}));
   click(f,'btnLock');
-  await sleep(120);
+  await sleep(110);
 }
-function hostProgress(){ return D(HOST).getElementById('progN').textContent.trim(); }
-function cardCount(row){ return D(HOST).getElementById(row).querySelectorAll('.card').length; }
+async function choose(id){
+  var btns=D(HOST).querySelectorAll('.pickbtn');
+  for(var i=0;i<btns.length;i++){ if(btns[i].getAttribute('data-id')===id){ btns[i].click(); await sleep(280); return true; } }
+  return false;
+}
+function prog(){ return D(HOST).getElementById('progN').textContent.trim(); }
+function cards(row){ return D(HOST).getElementById(row).querySelectorAll('.card').length; }
+async function actual(v){
+  var ai=D(HOST).getElementById('actualInput');
+  ai.value=String(v); ai.dispatchEvent(new HOST.contentWindow.Event('input',{bubbles:true}));
+  click(HOST,'btnActual'); await sleep(340);
+}
 
 async function run(){
-  // wipe any previous local state
   try{ for(var i=localStorage.length-1;i>=0;i--){var k=localStorage.key(i); if(k.indexOf('priceit.')===0) localStorage.removeItem(k);} }catch(e){}
   try{ sessionStorage.clear(); }catch(e){}
 
-  /* ---- host ---- */
   HOST=await loadFrame(document.getElementById('hostwrap'),'host.html');
   ok(vis(HOST,'gate'),'host 先出現 PIN 畫面');
   D(HOST).getElementById('pinInput').value='9999'; click(HOST,'pinBtn'); await sleep(80);
-  ok(vis(HOST,'gate'),'錯誤 PIN 無法進入 host');
+  ok(vis(HOST,'gate'),'錯誤 PIN 無法進入');
   D(HOST).getElementById('pinInput').value='0926'; click(HOST,'pinBtn'); await sleep(250);
-  ok(!vis(HOST,'gate') && vis(HOST,'stage'),'正確 PIN 0926 進入 host');
+  ok(vis(HOST,'stage')&&!vis(HOST,'gate'),'PIN 0926 進入 host');
   ok(vis(HOST,'viewLobby'),'host 顯示 lobby');
-  ok(D(HOST).getElementById('qrbox').querySelector('canvas')!=null,'QR code 已產生');
-  ok(/play\.html/.test(D(HOST).getElementById('joinUrl').textContent),'加入網址自動產生 (play.html)','got '+D(HOST).getElementById('joinUrl').textContent);
+  ok(D(HOST).getElementById('qrbox')===null,'★ QR Code 已移除');
+  ok(/play\.html/.test(D(HOST).getElementById('joinUrl').textContent),'加入網址仍自動產生');
+  ok(D(HOST).getElementById('lobbyRoster').querySelectorAll('.chip').length===10,'★ 名單是 10 人',
+     D(HOST).getElementById('lobbyRoster').querySelectorAll('.chip').length+'');
 
-  /* ---- 8 phones join ---- */
+  await new Promise(function(res){ HOST.onload=function(){setTimeout(res,220);}; HOST.contentWindow.location.reload(); });
+  ok(!vis(HOST,'gate')&&vis(HOST,'viewLobby'),'★ 重新整理後畫面正常（不是全白）');
+
   var frames=document.getElementById('frames');
   for(var n=0;n<NAMES.length;n++){
     try{ localStorage.removeItem('priceit.me'); }catch(e){}
     var f=await loadFrame(frames,'play.html');
-    var okPick=await pickName(f,NAMES[n][0]);
-    ok(okPick,'手機 '+(n+1)+' 選擇 '+NAMES[n][1]);
+    ok(await pickName(f,NAMES[n][0]),'手機 '+(n+1)+' 選擇 '+NAMES[n][1]);
     P[NAMES[n][0]]=f;
   }
-  await sleep(250);
-  ok(D(HOST).getElementById('lobbyRoster').querySelectorAll('.chip.in').length===8,'host lobby 看到 8 人加入',
-     D(HOST).getElementById('lobbyRoster').querySelectorAll('.chip.in').length+' chips');
-  ok(vis(P.koi,'viewStandby'),'開始前參加者顯示 standby');
+  await sleep(260);
+  ok(D(HOST).getElementById('lobbyRoster').querySelectorAll('.chip.in').length===10,'host 看到 10 人加入',
+     D(HOST).getElementById('lobbyRoster').querySelectorAll('.chip.in').length+'');
+  var first2=Array.prototype.slice.call(D(P.koi).querySelectorAll('.namebtn'),0,2)
+               .map(function(b){return b.getAttribute('data-id');});
+  ok(first2[0]==='luis'&&first2[1]==='hc','★ Luis 與 HC 排在名單最前面',first2.join(','));
 
-  /* ================= ROUND 1 ================= */
   click(HOST,'btnStart'); await sleep(250);
-  ok(vis(HOST,'viewCollect'),'host 進入 collecting');
-  ok(D(HOST).getElementById('progD').textContent.trim()==='/ 7','host 分母是 7',D(HOST).getElementById('progD').textContent);
-  ok(vis(P.koi,'viewPresenter'),'R1 分享者 Koi 看到 YOU\'RE UP');
-  ok(/YOU'RE UP/.test(txt(P.koi)),'Koi 畫面文字 YOU\'RE UP');
-  ok(!vis(P.koi,'viewGuess'),'分享者沒有出價輸入框');
-  ok(vis(P.xiaomi,'viewGuess'),'非分享者 小米 看到出價畫面（未 refresh）');
+  ok(vis(HOST,'viewPicking'),'★ START ROUND 後出現「這一輪是誰的禮物？」');
+  ok(D(HOST).querySelectorAll('.pickbtn').length===10,'選擇畫面列出 10 個人');
+  ok(D(HOST).querySelector('.pickbtn.suggest').getAttribute('data-id')==='luis','預設建議第一位還沒分享的人');
+  ok(vis(P.koi,'viewStandby'),'挑選期間手機顯示 standby');
+  ok(/主持人正在選/.test(txt(P.koi)),'手機說明文字正確');
 
-  var prices={xiaomi:3500,chile:2200,ruth:1980,tina:4200,haley:2500,william:5000,bonnie:3200};
-  var order=['xiaomi','chile','ruth','tina','haley'];
-  for(var i=0;i<order.length;i++){ await typePrice(P[order[i]],prices[order[i]]); }
-  await sleep(250);
-  ok(hostProgress()==='5','5 人送出後 host 顯示 5 / 7','got '+hostProgress());
-  ok(vis(P.xiaomi,'viewLocked'),'送出後手機顯示 LOCKED IN');
-  ok(/3,500/.test(txt(P.xiaomi)),'手機顯示自己的鑒價 NT$3,500');
+  ok(await choose('tina'),'★ 主持人挑選 Tina（不照預設順序）');
+  ok(vis(HOST,'viewCollect'),'進入 collecting');
+  ok(/Tina/.test(D(HOST).getElementById('presenterLabel').textContent),'大螢幕顯示 THIS ROUND Tina');
+  ok(D(HOST).getElementById('progD').textContent.trim()==='/ 9','★ 分母是 9',
+     D(HOST).getElementById('progD').textContent);
+  ok(vis(P.tina,'viewPresenter'),'★ Tina 手機顯示 YOU 是分享者');
+  ok(!vis(P.tina,'viewGuess'),'分享者沒有輸入框');
+  ok(vis(P.luis,'viewGuess'),'Luis 看到出價畫面');
 
-  // leak checks before reveal
-  var xt=txt(P.xiaomi);
-  ok(xt.indexOf('2,200')<0 && xt.indexOf('1,980')<0 && xt.indexOf('4,200')<0,'Reveal 前參加者看不到別人的價格');
+  var prices={luis:2680,hc:3500,koi:1980,xiaomi:4200,chile:2500,ruth:5000,haley:3200,william:2900,bonnie:3100};
+  var order=IDS.filter(function(x){return x!=='tina';});
+  for(var i2=0;i2<5;i2++){ await typePrice(P[order[i2]],prices[order[i2]]); }
+  await sleep(220);
+  ok(prog()==='5','5 人送出後顯示 5 / 9','got '+prog());
   var ht=txt(HOST);
-  ok(ht.indexOf('3,500')<0 && ht.indexOf('2,200')<0 && ht.indexOf('1,980')<0,'Reveal 前 host 看不到任何價格');
-  ok(/小米\s*✓/.test(ht)||ht.indexOf('✓')>-1,'Reveal 前 host 看得到誰已完成');
+  ok(ht.indexOf('2,680')<0&&ht.indexOf('3,500')<0,'Reveal 前 host 看不到價格');
+  ok(txt(P.luis).indexOf('3,500')<0,'Reveal 前參加者看不到別人的價格');
 
-  // edit before reveal
-  click(P.chile,'btnEdit'); await sleep(80);
-  await typePrice(P.chile,2680);
-  ok(/2,680/.test(txt(P.chile)),'Reveal 前可以修改自己的答案');
-  await sleep(150);
-  ok(hostProgress()==='5','修改後完成人數仍是 5','got '+hostProgress());
+  for(var i3=5;i3<order.length;i3++){ await typePrice(P[order[i3]],prices[order[i3]]); }
+  await sleep(240);
+  ok(prog()==='9','全部送出後顯示 9 / 9','got '+prog());
+  ok(/ALL LOCKED IN/.test(txt(HOST)),'顯示 ALL LOCKED IN');
 
-  await typePrice(P.william,prices.william);
-  await typePrice(P.bonnie,prices.bonnie);
-  await sleep(250);
-  ok(hostProgress()==='7','全部送出後 host 顯示 7 / 7','got '+hostProgress());
-  ok(/ALL LOCKED IN/.test(txt(HOST)),'host 顯示 ALL LOCKED IN');
-
-  /* ---- reveal ---- */
-  click(HOST,'btnReveal'); await sleep(350);
-  ok(vis(HOST,'viewReveal'),'host 進入 reveal');
-  ok(cardCount('row1')===4 && cardCount('row2')===3,'7 張卡 = 第一排 4 + 第二排 3',
-     cardCount('row1')+'+'+cardCount('row2'));
+  click(HOST,'btnReveal'); await sleep(320);
+  ok(cards('row1')===5&&cards('row2')===4,'★ 9 張卡 = 第一排 5 + 第二排 4',cards('row1')+'+'+cards('row2'));
   var hw=HOST.contentWindow;
-  // 在多種投影解析度下都必須一頁裝得下
   var sizes=[[1920,1080],[1600,900],[1366,768],[1280,720],[1024,640]];
   for(var s=0;s<sizes.length;s++){
     HOST.style.width=sizes[s][0]+'px'; HOST.style.height=sizes[s][1]+'px';
-    await sleep(160);
-    var dh=hw.document.documentElement.scrollHeight, bh=hw.document.body.scrollHeight,
-        dw=hw.document.documentElement.scrollWidth;
-    ok(dh<=hw.innerHeight+2 && bh<=hw.innerHeight+2 && dw<=hw.innerWidth+2,
-       'Reveal 一頁裝得下 @'+sizes[s][0]+'x'+sizes[s][1],
-       'h '+dh+'/'+hw.innerHeight+'  w '+dw+'/'+hw.innerWidth);
-    ok(D(HOST).querySelectorAll('.card').length===7,'7 張卡都在 @'+sizes[s][0]+'x'+sizes[s][1]);
+    await sleep(170);
+    var dh=hw.document.documentElement.scrollHeight, dw=hw.document.documentElement.scrollWidth;
+    ok(dh<=hw.innerHeight+2&&dw<=hw.innerWidth+2,'★ 9 張卡一頁裝得下 @'+sizes[s][0]+'x'+sizes[s][1],
+       'h '+dh+'/'+hw.innerHeight+' w '+dw+'/'+hw.innerWidth);
   }
-  HOST.style.width='1280px'; HOST.style.height='720px'; await sleep(160);
-  var rt=txt(HOST);
-  ok(/3,500/.test(rt)&&/2,680/.test(rt)&&/5,000/.test(rt),'7 個價格同時出現');
-  ok(/1,980/.test(txt(P.koi)),'分享者手機也同步進入 reveal');
+  HOST.style.width='1280px'; HOST.style.height='720px'; await sleep(170);
 
-  /* ---- actual price ---- */
-  var ai=D(HOST).getElementById('actualInput');
-  ai.value='2880'; ai.dispatchEvent(new hw.Event('input',{bubbles:true}));
-  click(HOST,'btnActual'); await sleep(400);
+  await actual(2880);
   var wins=D(HOST).querySelectorAll('.card.win');
-  ok(wins.length===1,'只有一位最接近者被 highlight',wins.length+' winners');
-  ok(wins.length===1 && /Chile/.test(wins[0].textContent),'最接近的是 Chile (2,680 vs 2,880)',
-     wins.length?wins[0].textContent:'-');
-  ok(/NT\$2,880/.test(txt(HOST)),'大螢幕顯示 ACTUAL PRICE 2,880');
-  ok(/200/.test(D(HOST).getElementById('sumDiff').textContent),'DIFFERENCE 顯示 200',
+  ok(wins.length===1&&/William/.test(wins[0].textContent),'最接近的是 William (2,900 vs 2,880)',
+     wins.length?wins[0].textContent.slice(0,30):'-');
+  ok(/20/.test(D(HOST).getElementById('sumDiff').textContent),'DIFFERENCE = 20',
      D(HOST).getElementById('sumDiff').textContent);
-  ok(/2,880/.test(txt(P.tina)),'參加者手機同步看到實際價格');
 
-  /* ---- next round ---- */
-  click(HOST,'btnNext'); await sleep(400);
-  ok(D(HOST).getElementById('roundLabel').textContent.indexOf('02')>-1,'host 進入 ROUND 02',
-     D(HOST).getElementById('roundLabel').textContent);
-  ok(hostProgress()==='0','下一輪出價已清空 (0 / 7)','got '+hostProgress());
-  ok(vis(P.xiaomi,'viewPresenter'),'R2 分享者 小米 自動變成 YOU\'RE UP（未 refresh）');
-  ok(vis(P.koi,'viewGuess'),'Koi 自動回到出價畫面（未 refresh）');
-  ok(!/3,500/.test(txt(P.koi)),'上一輪價格已從手機畫面清除');
+  click(HOST,'btnNext'); await sleep(340);
+  ok(vis(HOST,'viewPicking'),'NEXT ROUND 後回到挑選畫面');
+  ok(D(HOST).getElementById('roundLabel').textContent.indexOf('02')>-1,'進入 ROUND 02');
+  var tinaBtn=D(HOST).querySelector('.pickbtn[data-id="tina"]');
+  ok(tinaBtn.className.indexOf('used')>-1&&/已分享/.test(tinaBtn.textContent),'★ Tina 標記為已分享');
+  ok(vis(P.tina,'viewStandby'),'手機同步回到 standby（未 refresh）');
 
-  /* ================= ROUNDS 2..8 fast ================= */
-  for(var r=2;r<=8;r++){
-    var pres=['koi','xiaomi','chile','ruth','tina','haley','william','bonnie'][r-1];
-    var others=NAMES.map(function(x){return x[0];}).filter(function(id){return id!==pres;});
+  ok(await choose('bonnie'),'第 2 輪挑選 Bonnie');
+  ok(vis(P.bonnie,'viewPresenter'),'★ Bonnie 變成分享者（未 refresh）');
+  ok(vis(P.tina,'viewGuess'),'★ Tina 這輪回到出價畫面（未 refresh）');
+  ok(!/2,900/.test(txt(P.tina)),'上一輪價格已清除');
 
-    if(r===2){
-      // 並列情境：兩個人與實際價格差距完全相同 -> 兩個人都是 winner
-      await typePrice(P[others[0]],900);
-      await typePrice(P[others[1]],1100);
-      for(var j2=2;j2<others.length;j2++){ await typePrice(P[others[j2]],5000); }
-      await sleep(200);
-      click(HOST,'btnReveal'); await sleep(250);
-      var aiT=D(HOST).getElementById('actualInput');
-      aiT.value='1000'; aiT.dispatchEvent(new hw.Event('input',{bubbles:true}));
-      click(HOST,'btnActual'); await sleep(350);
-      var tw=D(HOST).querySelectorAll('.card.win');
-      ok(tw.length===2,'差距相同時兩個人都算 Winner',tw.length+' winners');
-      ok(/\+/.test(D(HOST).getElementById('sumClosest').textContent),'CLOSEST 同時列出兩個名字',
-         D(HOST).getElementById('sumClosest').textContent);
-      click(HOST,'btnNext'); await sleep(300);
-      continue;
-    }
+  click(HOST,'btnRepick'); await sleep(220);
+  ok(vis(HOST,'viewPicking'),'★ collecting 中可按「換分享者」回到挑選');
+  ok(await choose('haley'),'改成 Haley');
+  ok(vis(P.haley,'viewPresenter'),'Haley 變成分享者');
+  ok(vis(P.bonnie,'viewGuess'),'Bonnie 回到出價畫面');
+  click(HOST,'btnRepick'); await sleep(220);
+  var bb=D(HOST).querySelector('.pickbtn[data-id="bonnie"]');
+  ok(bb.className.indexOf('used')<0,'★ 被換掉的 Bonnie 不會被誤記成已分享');
+  ok(await choose('haley'),'再次確認 Haley');
 
-    if(r===3){
-      // 只有 5 個人出價就 REVEAL：仍要出 7 張卡，未出價顯示 —，且不影響最接近計算
-      for(var j3=0;j3<5;j3++){ await typePrice(P[others[j3]],2000+j3*100); }
-      await sleep(200);
-      ok(hostProgress()==='5','R3 只有 5 人出價');
-      click(HOST,'btnReveal'); await sleep(250);
-      ok(D(HOST).querySelectorAll('.card').length===7,'未全員出價也是 7 張卡',
-         D(HOST).querySelectorAll('.card').length+' cards');
-      ok(D(HOST).querySelectorAll('.card.miss').length===2,'2 張卡顯示未出價',
-         D(HOST).querySelectorAll('.card.miss').length+' miss');
-      var aiM=D(HOST).getElementById('actualInput');
-      aiM.value='2000'; aiM.dispatchEvent(new hw.Event('input',{bubbles:true}));
-      click(HOST,'btnActual'); await sleep(350);
-      var mw=D(HOST).querySelectorAll('.card.win');
-      ok(mw.length===1 && !mw[0].classList.contains('miss'),'未出價的人不會被算成最接近');
-      click(HOST,'btnNext'); await sleep(300);
-      continue;
-    }
+  var others2=IDS.filter(function(x){return x!=='haley';});
+  await typePrice(P[others2[0]],900);
+  await typePrice(P[others2[1]],1100);
+  for(var i4=2;i4<others2.length;i4++){ await typePrice(P[others2[i4]],9000); }
+  await sleep(240);
+  click(HOST,'btnReveal'); await sleep(260);
+  await actual(1000);
+  ok(D(HOST).querySelectorAll('.card.win').length===2,'差距相同時兩人都是 Winner',
+     D(HOST).querySelectorAll('.card.win').length+'');
 
-    for(var j=0;j<others.length;j++){ await typePrice(P[others[j]],1000+j*100); }
-    await sleep(200);
-    if(hostProgress()!=='7'){ ok(false,'R'+r+' 7/7','got '+hostProgress()); }
-    click(HOST,'btnReveal'); await sleep(250);
-    var ai2=D(HOST).getElementById('actualInput');
-    ai2.value='1000'; ai2.dispatchEvent(new hw.Event('input',{bubbles:true}));
-    click(HOST,'btnActual'); await sleep(300);
-    click(HOST,'btnNext'); await sleep(300);
-  }
-  ok(vis(HOST,'viewFinish'),'第 8 輪後顯示 ENDING');
-  ok(/FINISHED/.test(txt(HOST))&&/THANKS FOR PLAYING/.test(txt(HOST)),'ENDING 文案正確');
-  ok(!D(HOST).getElementById('masterBlock').hidden,'PRICE MASTER 區塊出現');
-  ok(/WIN/.test(D(HOST).getElementById('masterWins').textContent),'PRICE MASTER 顯示勝場',
-     D(HOST).getElementById('masterName').textContent+' / '+D(HOST).getElementById('masterWins').textContent);
+  click(HOST,'btnNext'); await sleep(320);
+  ok(vis(HOST,'viewPicking'),'進入第 3 輪挑選');
+  ok(!D(HOST).getElementById('btnFinish').hidden,'★ 挑選畫面有 FINISH GAME');
+  click(HOST,'btnFinish'); await sleep(320);
+  ok(vis(HOST,'viewFinish'),'★ 可以在任何一輪提早結束');
+  ok(/THANKS FOR PLAYING/.test(txt(HOST)),'ENDING 文案正確');
+  ok(!D(HOST).getElementById('masterBlock').hidden,'PRICE MASTER 出現');
   ok(vis(P.koi,'viewFinished'),'手機同步進入結束畫面');
 
-  /* ---- reset ---- */
-  click(HOST,'btnReset'); await sleep(80);
+  click(HOST,'btnReset'); await sleep(90);
   D(HOST).getElementById('resetYes').click(); await sleep(400);
   ok(vis(HOST,'viewLobby'),'RESET 後回到 lobby');
-  ok(D(HOST).getElementById('lobbyRoster').querySelectorAll('.chip.in').length===8,'RESET 後身份仍保留（不用重新加入）');
-  ok(vis(P.koi,'viewStandby'),'RESET 後手機回到 standby 而不是重新選名字');
+  ok(D(HOST).getElementById('lobbyRoster').querySelectorAll('.chip.in').length===10,'RESET 後身份保留');
+  click(HOST,'btnStart'); await sleep(260);
+  ok(D(HOST).querySelectorAll('.pickbtn.used').length===0,'★ RESET 後「已分享」紀錄也清空');
 
   log('');
   log(FAIL===0?'ALL PASS ('+(L.length-1)+' checks)':'FAILURES: '+FAIL);
