@@ -24,9 +24,11 @@
   $('pinBtn').addEventListener('click', tryPin);
   $('pinInput').addEventListener('keydown', function (e) { if (e.key === 'Enter') tryPin(); });
 
-  var alreadyIn = false;
-  try { alreadyIn = sessionStorage.getItem(GATE_KEY) === '1'; } catch (e) {}
-  if (alreadyIn) { openHost(); } else { setTimeout(function () { $('pinInput').focus(); }, 60); }
+  /* 任何未預期的錯誤都要「看得見」，不要讓投影幕無聲變成全白 */
+  window.addEventListener('error', function (e) {
+    var el = $('connText');
+    if (el) el.textContent = 'ERROR: ' + e.message;
+  });
 
   /* ---------------- state ---------------- */
   var game = { round: 1, state: 'waiting', actual: null };
@@ -47,7 +49,8 @@
     var joinUrl = base + 'play.html';
     $('joinUrl').textContent = joinUrl.replace(/^https?:\/\//, '');
     try {
-      QRCode.render($('qrbox'), joinUrl, { size: 300, margin: 2, dark: '#20374F' });
+      /* 掃描可靠度優先：純黑、4 個模組的靜默區（QR 規格要求）、盡量放大 */
+      QRCode.render($('qrbox'), joinUrl, { size: 440, margin: 4, dark: '#000000' });
     } catch (e) {
       $('qrbox').innerHTML = '<div style="color:#20374F;font:12px sans-serif;padding:20px">QR 產生失敗<br>請直接輸入網址</div>';
     }
@@ -296,6 +299,12 @@
     $('connText').textContent = msg;
     setTimeout(function () { $('connText').textContent = DB.isMock ? 'LOCAL TEST MODE' : 'LIVE'; }, 2500);
   }
+
+  /* 所有狀態與函式都就緒後，才恢復「這個分頁已通過 PIN」的狀態。
+     必須放在最後：否則重新整理時 start() 會在變數初始化前執行。 */
+  var alreadyIn = false;
+  try { alreadyIn = sessionStorage.getItem(GATE_KEY) === '1'; } catch (e) {}
+  if (alreadyIn) { openHost(); } else { setTimeout(function () { $('pinInput').focus(); }, 60); }
 
   /* keyboard shortcuts for the host: space = primary action */
   document.addEventListener('keydown', function (e) {

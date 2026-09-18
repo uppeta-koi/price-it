@@ -91,8 +91,8 @@ body.host .banner{flex:0 0 auto}
 .lobby h1{font-size:clamp(40px,5.6vw,92px)}
 .lobby .sub{margin-top:2.2vh;font-size:clamp(14px,1.15vw,20px)}
 .lobby .url{margin-top:1.4vh;font-size:clamp(13px,1vw,18px);color:#fff;word-break:break-all;letter-spacing:.02em}
-.qrbox{background:#fff;padding:14px;border-radius:var(--radius);line-height:0}
-.qrcap{margin-top:10px;text-align:center}
+.qrbox{background:#fff;padding:10px;border-radius:var(--radius);line-height:0}
+.qrcap{margin-top:12px;text-align:center}
 
 .roster{display:flex;flex-wrap:wrap;gap:.9vw;margin-top:3.4vh}
 .chip{
