@@ -6,7 +6,7 @@ var PLAYERS = [
   { id: 'luis',    name: 'Luis' },
   { id: 'hc',      name: 'HC' },
   { id: 'koi',     name: 'Koi' },
-  { id: 'xiaomi',  name: '小米' },
+  { id: 'xiaomi',  name: 'Mii' },
   { id: 'chile',   name: 'Chile' },
   { id: 'ruth',    name: 'Ruth' },
   { id: 'tina',    name: 'Tina' },

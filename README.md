@@ -257,7 +257,7 @@ python3 -m http.server 8000
 Luis      Chile     William
 HC        Ruth      Bonnie
 Koi       Tina
-小米       Haley
+Mii       Haley
 ```
 
 共 **10 人**，所以每一輪都是 **9 個人出價**（當輪分享者自動排除）。
