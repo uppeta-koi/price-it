@@ -1,0 +1,26 @@
+{
+  "rules": {
+    "rooms": {
+      "$room": {
+        "game":      { ".read": true, ".write": true },
+        "players":   { ".read": true, ".write": true },
+        "submitted": { ".read": true, ".write": true },
+        "results":   { ".read": true, ".write": true },
+
+        "guesses": {
+          ".write": "!newData.exists()",
+
+          "$round": {
+            ".read": "root.child('rooms').child($room).child('game').child('state').val() === 'revealed' || root.child('rooms').child($room).child('game').child('state').val() === 'actual_revealed' || root.child('rooms').child($room).child('game').child('state').val() === 'finished'",
+            ".write": "!newData.exists()",
+
+            "$player": {
+              ".write": "root.child('rooms').child($room).child('game').child('state').val() === 'collecting'",
+              ".validate": "newData.hasChildren(['name','price']) && newData.child('price').isNumber() && newData.child('price').val() > 0 && newData.child('name').isString()"
+            }
+          }
+        }
+      }
+    }
+  }
+}

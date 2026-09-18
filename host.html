@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>HOST — PRICE IT.</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body class="host">
+
+<div class="banner" id="mockBanner" hidden>Local test mode — 尚未設定 Firebase，只能在這台電腦的分頁之間同步</div>
+
+<!-- ================= PIN GATE ================= -->
+<section class="gate" id="gate">
+  <div class="brand"><span class="mark">uppeta</span><span class="tag">Where Innovative Solutions Happen</span></div>
+  <div class="eyebrow" style="margin-top:20px">Host access</div>
+  <input class="pin" id="pinInput" type="password" inputmode="numeric" maxlength="8" autocomplete="off" placeholder="····">
+  <div class="err" id="pinErr"></div>
+  <button class="btn solid" id="pinBtn">Enter host mode</button>
+  <a class="btn ghost" href="index.html">返回</a>
+</section>
+
+<!-- ================= STAGE ================= -->
+<section class="stage" id="stage" hidden>
+
+  <div class="stage-top">
+    <div class="brand"><span class="mark">uppeta</span><span class="tag">Where Innovative Solutions Happen</span></div>
+    <div class="meta">
+      <div class="round" id="roundLabel">ROUND 01 / 08</div>
+      <div class="presenter" id="presenterLabel">THIS ROUND &nbsp; <b>—</b></div>
+    </div>
+  </div>
+
+  <div class="stage-body">
+
+    <!-- ---- LOBBY ---- -->
+    <div class="lobby" id="viewLobby" hidden>
+      <div>
+        <div class="eyebrow">Team Building</div>
+        <h1 class="display" style="margin-top:14px">PRICE IT.</h1>
+        <div class="sub lede">用手機掃描右方 QR Code，選擇你的名字即可加入。</div>
+        <div class="url" id="joinUrl">—</div>
+        <div class="roster" id="lobbyRoster"></div>
+      </div>
+      <div>
+        <div class="qrbox" id="qrbox"></div>
+        <div class="qrcap eyebrow">Scan to join</div>
+      </div>
+    </div>
+
+    <!-- ---- COLLECTING ---- -->
+    <div class="collect" id="viewCollect" hidden>
+      <div>
+        <div class="eyebrow">This round</div>
+        <h2 class="display q" id="collectQ" style="margin-top:12px">這份禮物，<br>你覺得值多少？</h2>
+        <div class="qsub lede" id="collectSub">分享者：—</div>
+        <div class="progress-big" style="margin-top:4vh">
+          <div class="n num" id="progN">0</div>
+          <div class="d num" id="progD">/ 7</div>
+        </div>
+        <div class="progress-cap" id="progCap">已完成鑒價</div>
+        <div class="bar"><i id="progBar"></i></div>
+      </div>
+      <div>
+        <div class="eyebrow" style="margin-bottom:2vh">Status</div>
+        <div class="status-list" id="statusList"></div>
+      </div>
+    </div>
+
+    <!-- ---- REVEAL / ACTUAL ---- -->
+    <div id="viewReveal" hidden style="width:100%">
+      <div class="reveal-head"><div class="t" id="revealHead">ALL PRICES</div></div>
+      <div class="cards">
+        <div class="cardrow" id="row1"></div>
+        <div class="cardrow" id="row2"></div>
+      </div>
+    </div>
+
+    <!-- ---- FINISHED ---- -->
+    <div class="finish" id="viewFinish" hidden>
+      <h1 class="display">PRICE IT.<br>FINISHED.</h1>
+      <div class="thanks">THANKS FOR PLAYING</div>
+      <div class="master" id="masterBlock" hidden>
+        <div class="k">PRICE MASTER</div>
+        <div class="n" id="masterName">—</div>
+        <div class="w" id="masterWins">0 WINS</div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="stage-bottom">
+    <div class="eyebrow"><span class="dot" id="connDot"></span><span id="connText">CONNECTING</span></div>
+
+    <div class="ctrl-group" id="controls">
+      <!-- actual price input (only during reveal) -->
+      <div class="actual-inline" id="actualForm" hidden>
+        <div class="actual-blk">
+          <div class="k">ACTUAL PRICE</div>
+          <div><span class="eyebrow" style="font-size:14px">NT$</span>
+            <input class="hinput num" id="actualInput" type="text" inputmode="numeric" placeholder="0" autocomplete="off"></div>
+        </div>
+        <button class="btn solid" id="btnActual">Reveal actual price</button>
+      </div>
+
+      <!-- actual result summary (after actual revealed) -->
+      <div class="actual-inline" id="actualSummary" hidden>
+        <div class="actual-blk"><div class="k">ACTUAL PRICE</div><div class="v num" id="sumActual">—</div></div>
+        <div class="vr"></div>
+        <div class="actual-blk"><div class="k">CLOSEST PRICE</div><div class="v sm num" id="sumClosest">—</div></div>
+        <div class="vr"></div>
+        <div class="actual-blk"><div class="k">DIFFERENCE</div><div class="v sm num" id="sumDiff">—</div></div>
+      </div>
+
+      <button class="btn solid" id="btnStart" hidden>Start round</button>
+      <button class="btn solid" id="btnReveal" hidden>Reveal</button>
+      <button class="btn solid" id="btnNext" hidden>Next round</button>
+      <button class="btn ghost" id="btnReset">Reset game</button>
+    </div>
+  </div>
+
+</section>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script src="js/firebase-config.js"></script>
+<script src="js/game.js"></script>
+<script src="js/qrcode.js"></script>
+<script src="js/db.js"></script>
+<script src="js/host.js"></script>
+</body>
+</html>

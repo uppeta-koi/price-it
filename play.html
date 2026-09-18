@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1">
+<title>PRICE IT.</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body class="play">
+
+<div class="banner" id="mockBanner" hidden>Local test mode</div>
+
+<div class="phone">
+
+  <div class="phone-top">
+    <div class="brand"><span class="mark">uppeta</span></div>
+    <div class="eyebrow" id="roundTag">PRICE IT.</div>
+  </div>
+
+  <div class="phone-main">
+
+    <!-- ---------- 選名字 ---------- -->
+    <div id="viewName">
+      <div class="eyebrow">Team Building</div>
+      <h1 class="p-title" style="margin-top:14px">你是誰？</h1>
+      <p class="p-sub">選擇你的名字，之後就不用再選一次。</p>
+      <div class="namegrid" id="nameGrid"></div>
+    </div>
+
+    <!-- ---------- 等待主持人 ---------- -->
+    <div id="viewStandby" hidden>
+      <div class="eyebrow">Standby</div>
+      <h1 class="p-title" style="margin-top:14px">已加入。</h1>
+      <p class="p-sub">等待主持人開始這一輪。<br>手機先放著就好，不用重新整理。</p>
+    </div>
+
+    <!-- ---------- 我是分享者 ---------- -->
+    <div id="viewPresenter" hidden>
+      <div class="eyebrow">Round <span id="presRound">01</span></div>
+      <h1 class="p-title" style="margin-top:14px">YOU'RE UP.</h1>
+      <p class="p-sub">
+        這一輪是你的禮物。<br><br>
+        請完成你的 1 分鐘分享，<br>
+        並在大家鑒價後公布實際價格。
+      </p>
+      <div class="notice" id="presProgress">目前 0 / 7 已完成鑒價</div>
+    </div>
+
+    <!-- ---------- 出價 ---------- -->
+    <div id="viewGuess" hidden>
+      <div class="eyebrow">Round <span id="guessRound">01</span> &nbsp;·&nbsp; <span id="guessPresenter">—</span> 的禮物</div>
+      <h1 class="p-title" style="margin-top:14px">PRICE IT.</h1>
+      <p class="p-sub">這份禮物，<br>你覺得值多少？</p>
+
+      <div class="money" id="moneyBox">
+        <span class="cur">NT$</span>
+        <input id="priceInput" type="text" inputmode="numeric" pattern="[0-9]*"
+               autocomplete="off" placeholder="0" maxlength="9">
+      </div>
+      <div class="hint" id="guessHint">只能輸入正整數</div>
+
+      <button class="btn solid block" id="btnLock" style="margin-top:22px">Lock in →</button>
+    </div>
+
+    <!-- ---------- 已鎖定 ---------- -->
+    <div id="viewLocked" hidden>
+      <div class="eyebrow">Locked in</div>
+      <h1 class="p-title" style="margin-top:14px">LOCKED IN.</h1>
+      <p class="p-sub" style="margin-top:22px">你的鑒價</p>
+      <div class="locked-price num"><small id="lockedCur">NT$</small><span id="lockedPrice">0</span></div>
+      <div class="waitline" id="lockedWait">等待其他人完成鑒價…</div>
+      <button class="btn block" id="btnEdit" style="margin-top:26px">修改我的鑒價</button>
+    </div>
+
+    <!-- ---------- 開價 ---------- -->
+    <div id="viewRevealed" hidden>
+      <div class="eyebrow">Revealed</div>
+      <h1 class="p-title" style="margin-top:14px" id="revealTitle">開價！</h1>
+      <div id="actualBlock" hidden style="margin-top:22px">
+        <div class="eyebrow">Actual price</div>
+        <div class="locked-price num" style="margin-top:6px"><small>NT$</small><span id="actualPrice">0</span></div>
+        <div class="waitline" id="closestLine">—</div>
+      </div>
+      <div class="plist" id="revealList"></div>
+      <p class="p-sub" style="margin-top:24px;font-size:13px">完整結果請看大螢幕。</p>
+    </div>
+
+    <!-- ---------- 結束 ---------- -->
+    <div id="viewFinished" hidden>
+      <div class="eyebrow">Finished</div>
+      <h1 class="p-title" style="margin-top:14px">THANKS<br>FOR PLAYING.</h1>
+      <div class="notice" id="myScore">—</div>
+    </div>
+
+  </div>
+
+  <div class="phone-foot">
+    <div class="whoami" id="whoami">—</div>
+    <button class="btn ghost" id="btnSwitch" hidden>換人</button>
+  </div>
+
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script src="js/firebase-config.js"></script>
+<script src="js/game.js"></script>
+<script src="js/db.js"></script>
+<script src="js/play.js"></script>
+</body>
+</html>
